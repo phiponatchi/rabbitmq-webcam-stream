@@ -1,35 +1,37 @@
-import os
-import sys
+#!/usr/bin/env python
 
 import cv2
 import numpy as np
 import pika
 
 
-def main():
-    connection = pika.BlockingConnection(pika.ConnectionParameters(host='localhost'))
+def create_connection():
+    connection = pika.BlockingConnection(pika.ConnectionParameters('localhost'))
     channel = connection.channel()
+    channel.exchange_declare(exchange='webcam', exchange_type='fanout')
+    return connection, channel
 
-    channel.queue_declare(queue='stream')
+def on_frame(ch, method, properties, body):
+    nparr = np.frombuffer(body, np.uint8)
+    newFrame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
+    # processing and streaming
+    cv2.imshow("webcam", newFrame)
+    cv2.waitKey(1)
 
-    def callback(ch, method, properties, body):
-        nparr = np.frombuffer(body, np.uint8)
-        newFrame = cv2.imdecode(nparr, cv2.IMREAD_COLOR)
-        # processing and streaming
-        cv2.imshow("webcam", newFrame)
-        cv2.waitKey(1)
+def start_consumer(channel):
+    # exclusive=True — queue is deleted when consumer disconnects
+    result = channel.queue_declare(queue='', exclusive=True)
+    queue_name = result.method.queue
 
-    channel.basic_consume(queue='stream', on_message_callback=callback, auto_ack=True)
+    channel.queue_bind(exchange='webcam', queue=queue_name)
+    channel.basic_consume(queue=queue_name, on_message_callback=on_frame, auto_ack=True)
 
-    print(' [*] Waiting for messages. To exit press CTRL+C')
+    print("Waiting for frames...")
     channel.start_consuming()
 
 if __name__ == '__main__':
+    connection, channel = create_connection()
     try:
-        main()
+        start_consumer(channel)
     except KeyboardInterrupt:
-        print('Interrupted')
-        try:
-            sys.exit(0)
-        except SystemExit:
-            os._exit(0)
+        connection.close()
