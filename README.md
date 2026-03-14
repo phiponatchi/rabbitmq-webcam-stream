@@ -57,5 +57,5 @@ You should see the webcam video window appear via the consumer.
 - Both scripts declare the queue (`stream`) if it does not already exist.
 - If you change queue names, update both scripts.
 
-# Licence
+# License
 MIT
