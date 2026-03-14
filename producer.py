@@ -1,5 +1,4 @@
 #!/usr/bin/env python
-import time
 
 import cv2
 import pika
@@ -11,12 +10,10 @@ def create_connection():
     channel.exchange_declare(exchange='webcam', exchange_type='fanout')
     return connection, channel
 
-def stream_webcam(channel, fps=30, quality=70):
+def stream_webcam(channel, quality=70):
     cap = cv2.VideoCapture(0)
     if not cap.isOpened():
         raise RuntimeError("Could not open webcam")
-
-    frame_interval = 1 / fps
 
     try:
         while True:
@@ -35,8 +32,6 @@ def stream_webcam(channel, fps=30, quality=70):
                     delivery_mode=1  # non-persistent, no disk write
                 )
             )
-
-            time.sleep(frame_interval)
     finally:
         cap.release()
 
