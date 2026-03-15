@@ -5,6 +5,7 @@ services:
     ports:
       - "5672:5672"
       - "15672:15672"
+      - "0.0.0.0:15674:15674"
     environment:
       RABBITMQ_DEFAULT_USER: guest
       RABBITMQ_DEFAULT_PASS: guest
@@ -13,3 +14,10 @@ services:
       interval: 5s
       timeout: 10s
       retries: 10
+    volumes:
+      - ./rabbitmq/enabled_plugins:/etc/rabbitmq/enabled_plugins
+      - ./rabbitmq/rabbitmq.conf:/etc/rabbitmq/rabbitmq.conf
+      - rabbitmq_data:/var/lib/rabbitmq
+
+volumes:
+  rabbitmq_data:
