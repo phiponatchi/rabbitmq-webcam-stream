@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Webcam Stream</title>
+</head>
+<body>
+  <canvas id="stream"></canvas>
+  <button onclick="receiver.disconnect()">Stop</button>
+  <button onclick="connect()">Start</button>
+
+  <script src="https://cdn.jsdelivr.net/npm/@stomp/stompjs@7/bundles/stomp.umd.min.js"></script>
+  <script>
+    class WebcamStreamReceiver {
+      constructor(canvasId) {
+        this.canvas = document.getElementById(canvasId);
+        this.ctx = this.canvas.getContext('2d');
+        this.client = null;
+      }
+
+      connect({ brokerURL, login, passcode }) {
+        this.client = new StompJs.Client({
+          brokerURL,
+          connectHeaders: { login, passcode },
+          reconnectDelay: 5000,
+          heartbeatIncoming: 4000,
+          heartbeatOutgoing: 4000,
+          onConnect: () => this._subscribe(),
+          onDisconnect: () => console.log('Disconnected'),
+          onStompError: (frame) => console.error('STOMP error:', frame),
+        });
+        this.client.activate();
+      }
+
+      disconnect() {
+        this.client?.deactivate();
+      }
+
+      _subscribe() {
+        this.client.subscribe(
+          '/exchange/webcam',
+          (message) => this._onFrame(message),
+          { 'content-type': 'application/octet-stream' }
+        );
+      }
+
+      async _onFrame(message) {
+        const blob = new Blob([message.binaryBody], { type: 'image/jpeg' });
+        const bitmap = await createImageBitmap(blob);
+
+        this.canvas.width = bitmap.width;
+        this.canvas.height = bitmap.height;
+        this.ctx.drawImage(bitmap, 0, 0);
+        bitmap.close();
+      }
+    }
+
+    const receiver = new WebcamStreamReceiver('stream');
+    function connect(){
+        receiver.connect({
+            brokerURL: 'ws://localhost:15674/ws',
+            login: 'guest',
+            passcode: 'guest',
+        });
+    }
+
+    connect();
+  </script>
+</body>
+</html>
